@@ -1,4 +1,5 @@
 import ee
+import datetime
 
 def initEE(serviceAccount,keyFile):
     credentials = ee.ServiceAccountCredentials(serviceAccount, keyFile)
@@ -306,3 +307,35 @@ def historicalMap(geom,iniTime,endTime,
     
     return waterMap
 
+
+class precip_map(object):
+    def __init__(self):
+        today = datetime.datetime.now() - datetime.timedelta(1)
+        self.today = today.strftime('%Y-%m-%d')
+        
+        return
+    
+    def _accumulate(self,ic,ndays=1):
+        
+        eeDate = ee.Date(self.today)
+        
+        ic_filtered = ic.filterDate(eeDate.advance(-ndays,'day'),eeDate)
+        
+        accum_img = ee.Image(ic_filtered.sum())
+        
+        return accum_img.updateMask(accum_img.gt(1))
+    
+    def get_precip(self,accumulation=1):
+        ic = ee.ImageCollection('JAXA/GPM_L3/GSMaP/v6/operational').select(['hourlyPrecipRateGC'])
+        
+        ranges = {1:[1,100],3:[1,250],7:[1,500]}
+        crange = ranges[accumulation]
+        
+        accum = self._accumulate(ic,accumulation)
+        
+        precipMap = getTileLayerUrl(accum.visualize(min=crange[0],max=crange[1],
+                                                    palette='#000080,#00fbb2,#d8ff22,#ff0039,#fef8fe'
+                                                   )
+                                   )
+        
+        return precipMap
