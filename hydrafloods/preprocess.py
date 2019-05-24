@@ -115,6 +115,8 @@ def atms(infile,gridding_radius=25000,):
     maxx,maxy = transform(inProj,outProj,180,86)
     res = 16000
 
+    data = ds.antenna_temp.where(ds['sat_zen']<50).values
+
     eastings = np.arange(round(minx),round(maxx),res)
     northings = np.arange(round(miny),round(maxy),res)
 
@@ -133,12 +135,13 @@ def atms(infile,gridding_radius=25000,):
                                        [ee.min(), nn.min(),
                                         ee.max(), nn.max()])
 
-    data = None
-
     # TODO: dynamically estimate sigama based on beam footprints
+    # if data.shape[0] > 1:
+    #     eps = [0.1 for i in range(data.shape[0])]
+    # else:
     eps = 0.1
 
-    result = bilinear.resample_bilinear(ds.land_frac.where(ds['sat_zen']<50).values,
+    result = bilinear.resample_bilinear(data,
                                         swath_def,area_def,radius=gridding_radius,
                                         neighbours=32,nprocs=1, fill_value=nd,
                                         reduce_data=True, segments=None,
@@ -147,15 +150,20 @@ def atms(infile,gridding_radius=25000,):
     result[np.where(result>=0)] = np.abs(result[np.where(result>=0)] - 1) * 10000
 
     name,_ = os.path.splitext(infile)
-    outName = name + '_waterfrac.TIF'
+    outName = name + '_btr.TIF'
 
     gt = (ee.min(),res,0,nn.max(),0,-res)
 
-    writeGeotiff(outName,result,gt,outEpsg,noData=nd)
+    writeGeotiff(outName,result,gt,outEpsg,noData=nd,gdalType='float32')
 
     return outName
 
-def writeGeotiff(outName,data,gt,epsg,noData=None):
+def writeGeotiff(outName,data,gt,epsg,noData=-999,gdalType='int16'):
+
+    typeOpts = {'byte':gdal.GDT_Byte,'int8':gdal.GDT_Byte,'uint16': gdal.GDT_UInt16,
+                'int16': gdal.GDT_Int16,'uint32': gdal.GDT_UInt32,'int32': gdal.GDT_Int32,
+                'float32': gdal.GDT_Float32,'float64': gdal.GDT_Float64}
+
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(epsg)
 
@@ -171,7 +179,7 @@ def writeGeotiff(outName,data,gt,epsg,noData=None):
 
     driver = gdal.GetDriverByName('GTiff')
 
-    outDs = driver.Create(outName,xDim,yDim,nBands,gdal.GDT_Int16)
+    outDs = driver.Create(outName,xDim,yDim,nBands,typeOpts[gdalType])
     outDs.SetGeoTransform(gt)
     # set to something that is not user defined
     outDs.SetProjection(srs.ExportToWkt())
@@ -179,7 +187,7 @@ def writeGeotiff(outName,data,gt,epsg,noData=None):
     for b in range(nBands):
         band = outDs.GetRasterBand(b+1)
         if noData:
-            band.SetNoDataValue(-999)
+            band.SetNoDataValue(noData)
         if nBands > 1:
             band.WriteArray(data[:,:,b])
         else:
