@@ -18,13 +18,19 @@ $ conda create -n hydra -c conda-forge python=3.6 numpy scipy pandas requests ya
 $ conda activate hydra
 ```
 
-2. Authenticate the Earth Engine API
+2. Install additional packages via `pip` that are not on conda-forge
+
+```
+$ pip install git+git://github.com/KMarkert/simple-cmr.git
+```
+
+3. Authenticate the Earth Engine API
 
 ```
 $ earthengine authenticate
 ```
 
-3. Install [Google Storage Utility command-line interface (gsutil)](https://cloud.google.com/storage/docs/gsutil_install) and the setup the `gsutil` environment
+4. Install [Google Storage Utility command-line interface (gsutil)](https://cloud.google.com/storage/docs/gsutil_install) and the setup the `gsutil` environment
 
 ```
 $ gcloud init
@@ -76,4 +82,4 @@ Details regarding the command
 * myconf.yaml      --- call the .yaml file that specifies the ROI etc. (see the exampl.yaml for details)
 
 
-<img src="exampleyaml.JPG" width="50%">
+![config example](docs/_static/exampleyaml.JPG)
